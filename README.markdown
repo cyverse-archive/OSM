@@ -1,23 +1,3 @@
-Install the iPlant OSM
-======================
-
-Download the OSM war from off of hudson and copy it into Tomcat's webapps directory. If you're running the OSM on the same box that is hosting MongoDB, then no additional configuration should be needed.
-
-The OSM is now using Log4J to control log levels. The log4j.properties file lives in the deployed war's WEB-INF/classes/ directory.
-
-If you're not running MongoDB on the same host as the OSM, then you'll need to configure the OSM to hit the correct MongoDB instance. This is done by modifying the osm.properties file, which is located in the deployed war's WEB-INF/classes/ directory. The config file will look like this:
-
-    osm.mongodb.host=127.0.0.1
-    osm.mongodb.port=27017
-    osm.mongodb.database=osmdb
-    osm.callbacks.connect-timeout=60000
-    osm.callbacks.read-timeout=60000
-    osm.app.max-retries=10
-    osm.app.retry-delay=1000
-
-The only thing you should have to modify is the osm.mongodb.host so it's pointing to the correct IP address or hostname.
-
-
 Verifying the OSM is *working*
 ==============================
 
@@ -25,15 +5,15 @@ Verifying the OSM is *working*
 
 We can check that the OSM is alive:
 
-> $> curl http://osm-1.iplantcollaborative.org:14444/osm/jobs/blah
+> $> curl http://127.0.0.1:3000/jobs/blah
 
 or
 
-> $> curl http://osm-1.iplantcollaborative.org:14444/osm/jobs/foobarbazbang
+> $> curl http://127.0.0.1:3000/jobs/foobarbazbang
 
 We can check the log too:
 
-> tail -f /opt/tomcat/logs/osm.log
+> tail -f /opt/tomcat/logs.log
 
 This just shows the service is responding, the result should be:
 
@@ -41,7 +21,7 @@ This just shows the service is responding, the result should be:
 
 ### creating documents / creating "objects"
 
-> $> curl --data '{"foo":"bar"}' http://osm-1.iplantcollaborative.org:14444/osm/jobs
+> $> curl --data '{"foo":"bar"}' http://127.0.0.1:3000/jobs
 
 This will produce a UUID:
 
@@ -51,7 +31,7 @@ This identifier will be used with subsequent updates.  The above value returned 
 
 We can grab that the freshly created document with a simple HTTP GET:
 
-> $> curl http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
+> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
     {
         "object_persistence_uuid": "32060E54-F92A-1358-33EC-8E6F22BBBACD",
@@ -70,7 +50,7 @@ We can grab that the freshly created document with a simple HTTP GET:
 
 We can update the document (or, object state) like so:
 
-> $> curl --data '{"foo": "bar", "status": "RUNNING", "whatever": "theheck", "jerry": "wants"}' http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
+> $> curl --data '{"foo": "bar", "status": "RUNNING", "whatever": "theheck", "jerry": "wants"}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
     {
         "object_persistence_uuid": "32060E54-F92A-1358-33EC-8E6F22BBBACD",
@@ -95,14 +75,14 @@ Keep in mind that this is replacing the document that is stored.
 
 Grab the UUID and check it to see if your changes made it:
 
-> $> curl http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
+> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
 The previous state is available in ``"history"``.
 
 When state changes, there are callbacks that will fire an HTTP PORT to the URL defined by the callback's ``callback`` value:
 check the callbacks:
 
-> $> curl http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
+> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[]}
 
@@ -114,13 +94,13 @@ For clarifications on the callback events, please refer to the OSM [documentatio
 
 ### add callbacks:
 
-> $> curl --data '{"callbacks": [ {"type": "on_change", "callback":"http://www.postbin.org/r51w6z" }, {"type":"on_update","callback":"http://www.google.com/"} ]}' http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
+> $> curl --data '{"callbacks": [ {"type": "on_change", "callback":"http://www.postbin.org/r51w6z" }, {"type":"on_update","callback":"http://www.google.com/"} ]}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[{"type":"on_change","callback":"http:\/\/www.postbin.org\/r51w6z"},{"type":"on_update","callback":"http:\/\/www.google.com"}]}
 
 The results returned will be a list of the current callbacks on the object.  If you want to verify that result then just do the following:
 
-> $> curl http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
+> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[{"type":"on_change","callback":"http://www.postbin.org/r51w6z"},{"type":"on_update","callback":"http://www.google.com/"}]}
 
@@ -130,7 +110,7 @@ Please refer to the OSM [documentation](https://pods.iplantcollaborative.org/wik
 
 ### deleting callbacks:
 
-> $> curl --data '{"callbacks": [ {"type":"on_update","callback":"http://www.google.com/"} ]}' http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks/delete
+> $> curl --data '{"callbacks": [ {"type":"on_update","callback":"http://www.google.com/"} ]}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks/delete
 
     {"callbacks":[{"type":"on_change","callback":"http:\/\/www.postbin.org\/r51w6z"}]
 
@@ -138,7 +118,7 @@ The response to the delete command will be the remaining callbacks on the object
 
 ### verify they have been deleted:
 
-> $> curl http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
+> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[]}
 
@@ -163,7 +143,7 @@ The input JSON is:
 
 (Note: You may wish to save this to a file and include it with curl via the response-file interface (putting the @ in front of the filename))
 
-> $> curl --data '{"uuid": "multistep3-89fb-4d70-0650-0xC0FFEE", "name": "job1", "user": "ana", "workspace_id": "1", "dag_id": "323", "submission_date": "Sun Dec 19 2010 12:50:38 GMT-0700 (MST)", "status": "Submitted", "foo": "baz", "whatever": "theheck", "jerry": "wants"}' http://osm-1.iplantcollaborative.org:14444/osm/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
+> $> curl --data '{"uuid": "multistep3-89fb-4d70-0650-0xC0FFEE", "name": "job1", "user": "ana", "workspace_id": "1", "dag_id": "323", "submission_date": "Sun Dec 19 2010 12:50:38 GMT-0700 (MST)", "status": "Submitted", "foo": "baz", "whatever": "theheck", "jerry": "wants"}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
 This will respond with the new contents and the state management values:
 
@@ -199,7 +179,7 @@ This will respond with the new contents and the state management values:
 
 Now let's query for the ``"state.uuid"``.  We put the query in the POST body:
 
-> $> curl --data '{"state.uuid" : "multistep3-89fb-4d70-0650-0xC0FFEE"}' "http://osm-1.iplantcollaborative.org:14444/osm/jobs/query"
+> $> curl --data '{"state.uuid" : "multistep3-89fb-4d70-0650-0xC0FFEE"}' "http://127.0.0.1:3000/jobs/query"
 
     {
         "objects": [
