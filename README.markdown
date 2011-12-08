@@ -1,27 +1,47 @@
-Verifying the OSM is *working*
-==============================
+Object State Management
+=======================
 
-### verify it's alive
+Provides HTTP JSON API on top of MongoDB. Allows a subset of MongoDB operations on a document and provides a callback mechanism that can be used to notify other services that a document has changed.
+
+
+Building the OSM
+----------------
+
+You'll need leiningen installed. Then run the following commands:
+
+    lein deps
+    lein ring uberwar
+    
+Installing the OSM
+------------------
+
+Assuming that the OSM is running on the same host as MongoDB, this should be as simple as dropping the WAR file into your servlet container.
+
+
+Verifying the OSM is working
+----------------------------
 
 We can check that the OSM is alive:
 
-> $> curl http://127.0.0.1:3000/jobs/blah
+    curl http://127.0.0.1:3000/jobs/blah
 
 or
 
-> $> curl http://127.0.0.1:3000/jobs/foobarbazbang
+    curl http://127.0.0.1:3000/jobs/foobarbazbang
 
 We can check the log too:
 
-> tail -f /opt/tomcat/logs.log
+    tail -f /opt/tomcat/logs.log
 
 This just shows the service is responding, the result should be:
 
-     That url doesn't exist.
+    That url doesn't exist.
 
-### creating documents / creating "objects"
 
-> $> curl --data '{"foo":"bar"}' http://127.0.0.1:3000/jobs
+Creating documents / creating "objects"
+---------------------------------------
+
+    curl --data '{"foo":"bar"}' http://127.0.0.1:3000/jobs
 
 This will produce a UUID:
 
@@ -31,7 +51,7 @@ This identifier will be used with subsequent updates.  The above value returned 
 
 We can grab that the freshly created document with a simple HTTP GET:
 
-> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
+    curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
     {
         "object_persistence_uuid": "32060E54-F92A-1358-33EC-8E6F22BBBACD",
@@ -46,11 +66,13 @@ We can grab that the freshly created document with a simple HTTP GET:
         ]
     }
 
-### updating documents / updating "objects"
+
+Updating documents / updating "objects"
+---------------------------------------
 
 We can update the document (or, object state) like so:
 
-> $> curl --data '{"foo": "bar", "status": "RUNNING", "whatever": "theheck", "jerry": "wants"}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
+    curl --data '{"foo": "bar", "status": "RUNNING", "whatever": "theheck", "jerry": "wants"}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
     {
         "object_persistence_uuid": "32060E54-F92A-1358-33EC-8E6F22BBBACD",
@@ -75,14 +97,14 @@ Keep in mind that this is replacing the document that is stored.
 
 Grab the UUID and check it to see if your changes made it:
 
-> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
+    curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
 The previous state is available in ``"history"``.
 
 When state changes, there are callbacks that will fire an HTTP PORT to the URL defined by the callback's ``callback`` value:
 check the callbacks:
 
-> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
+    curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[]}
 
@@ -92,15 +114,17 @@ When a document is updated, so any update, the OSM will do an HTTP POST to a cal
 
 For clarifications on the callback events, please refer to the OSM [documentation](https://pods.iplantcollaborative.org/wiki/display/coresw/Object+State+Management+System) for more detailed information.
 
-### add callbacks:
 
-> $> curl --data '{"callbacks": [ {"type": "on_change", "callback":"http://www.postbin.org/r51w6z" }, {"type":"on_update","callback":"http://www.google.com/"} ]}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
+Add callbacks:
+--------------
+
+    curl --data '{"callbacks": [ {"type": "on_change", "callback":"http://www.postbin.org/r51w6z" }, {"type":"on_update","callback":"http://www.google.com/"} ]}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[{"type":"on_change","callback":"http:\/\/www.postbin.org\/r51w6z"},{"type":"on_update","callback":"http:\/\/www.google.com"}]}
 
 The results returned will be a list of the current callbacks on the object.  If you want to verify that result then just do the following:
 
-> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
+    curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[{"type":"on_change","callback":"http://www.postbin.org/r51w6z"},{"type":"on_update","callback":"http://www.google.com/"}]}
 
@@ -108,21 +132,25 @@ You can add callbacks for two "event" types (or callback event types): "on_updat
 
 Please refer to the OSM [documentation](https://pods.iplantcollaborative.org/wiki/display/coresw/Object+State+Management+System) for more detailed information.
 
-### deleting callbacks:
 
-> $> curl --data '{"callbacks": [ {"type":"on_update","callback":"http://www.google.com/"} ]}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks/delete
+Deleting callbacks
+------------------
+
+    curl --data '{"callbacks": [ {"type":"on_update","callback":"http://www.google.com/"} ]}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks/delete
 
     {"callbacks":[{"type":"on_change","callback":"http:\/\/www.postbin.org\/r51w6z"}]
 
 The response to the delete command will be the remaining callbacks on the object.
 
-### verify they have been deleted:
+Verify they have been deleted:
 
-> $> curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
+    curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[]}
 
-### querying for what state you're after:
+
+Querying for what state you're after
+------------------------------------
 
 Let's update the OSM with some more "realistic" data:
 
@@ -143,7 +171,7 @@ The input JSON is:
 
 (Note: You may wish to save this to a file and include it with curl via the response-file interface (putting the @ in front of the filename))
 
-> $> curl --data '{"uuid": "multistep3-89fb-4d70-0650-0xC0FFEE", "name": "job1", "user": "ana", "workspace_id": "1", "dag_id": "323", "submission_date": "Sun Dec 19 2010 12:50:38 GMT-0700 (MST)", "status": "Submitted", "foo": "baz", "whatever": "theheck", "jerry": "wants"}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
+    curl --data '{"uuid": "multistep3-89fb-4d70-0650-0xC0FFEE", "name": "job1", "user": "ana", "workspace_id": "1", "dag_id": "323", "submission_date": "Sun Dec 19 2010 12:50:38 GMT-0700 (MST)", "status": "Submitted", "foo": "baz", "whatever": "theheck", "jerry": "wants"}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
 This will respond with the new contents and the state management values:
 
@@ -179,7 +207,7 @@ This will respond with the new contents and the state management values:
 
 Now let's query for the ``"state.uuid"``.  We put the query in the POST body:
 
-> $> curl --data '{"state.uuid" : "multistep3-89fb-4d70-0650-0xC0FFEE"}' "http://127.0.0.1:3000/jobs/query"
+    curl --data '{"state.uuid" : "multistep3-89fb-4d70-0650-0xC0FFEE"}' "http://127.0.0.1:3000/jobs/query"
 
     {
         "objects": [
