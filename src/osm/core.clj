@@ -5,6 +5,7 @@
             [compojure.handler :as handler]
             [clojure-commons.json :as cc-json]
             [clojure-commons.props :as cc-props]
+            [clojure-commons.clavin-client :as cl]
             [clojure.data.json :as json]
             [clojure.tools.logging :as log])
   (:use [ring.middleware keyword-params nested-params]))
@@ -14,16 +15,26 @@
   {:status status
    :body msg})
 
-(def props
-     (cc-props/parse-properties "osm.properties"))
+
+(def zkprops (cc-props/parse-properties "osm.properties"))
+(def zkurl (get zkprops "zookeeper"))
+(def props (atom nil))
+
+(cl/with-zk
+  zkurl
+  (when (not (cl/can-run?))
+    (log/warn "THIS APPLICATION CANNOT RUN ON THIS MACHINE. SO SAYETH ZOOKEEPER.")
+    (log/warn "THIS APPLICATION WILL NOT EXECUTE CORRECTLY."))
+  
+  (reset! props (cl/properties "osm")))
 
 (def max-retries
-     (Integer/parseInt (get props "osm.app.max-retries")))
+     (Integer/parseInt (get @props "osm.app.max-retries")))
 
 (def retry-delay
-     (Integer/parseInt (get props "osm.app.retry-delay")))
+     (Integer/parseInt (get @props "osm.app.retry-delay")))
 
-(mongo/set-mongo-props props)
+(mongo/set-mongo-props @props)
 
 (defn format-exception
   "Formats a raised exception as a JSON object. Returns a response map."
