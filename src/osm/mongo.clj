@@ -1,5 +1,5 @@
 (ns osm.mongo
-  (:require [clojure.contrib.string :as string]
+  (:require [clojure.string :as string]
             [somnium.congomongo :as congo]
             [clojure.data.json :as json]
             [clojure.tools.logging :as log])
