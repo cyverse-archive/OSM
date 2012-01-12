@@ -9,7 +9,7 @@
 # Specific script configuration
 # Change these as needed to run a specific nodejs program.
 ################################################################################
-RUNUSER=osm
+RUNUSER=iplant
 program=osm
 jarfile=osm-1.0.0-SNAPSHOT-standalone.jar
 jar=/usr/local/lib/${program}/${jarfile}
