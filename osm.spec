@@ -56,7 +56,7 @@ rm -r lib/*
 %attr(-,iplant,iplant) /etc/osm/
 
 %config %attr(0644,iplant,iplant) /etc/osm/log4j.properties
-%config %attr(0644,iplant,iplant) /etc/osm/iplant-email.properties
+%config %attr(0644,iplant,iplant) /etc/osm/osm.properties
 
 %attr(0755,root,root) /etc/init.d/osm
 %attr(0644,iplant,iplant) /usr/local/lib/osm/osm-1.0.0-SNAPSHOT-standalone.jar
