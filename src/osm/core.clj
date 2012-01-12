@@ -1,4 +1,5 @@
 (ns osm.core
+  (:gen-class)
   (:use [compojure.core])
   (:require [osm.mongo :as mongo]
             [compojure.route :as route]
@@ -6,6 +7,7 @@
             [clojure-commons.json :as cc-json]
             [clojure-commons.props :as cc-props]
             [clojure-commons.clavin-client :as cl]
+            [ring.adapter.jetty :as jetty]
             [clojure.data.json :as json]
             [clojure.tools.logging :as log])
   (:use [ring.middleware keyword-params nested-params]))
@@ -15,26 +17,11 @@
   {:status status
    :body msg})
 
-
-(def zkprops (cc-props/parse-properties "osm.properties"))
-(def zkurl (get zkprops "zookeeper"))
 (def props (atom nil))
 
-(cl/with-zk
-  zkurl
-  (when (not (cl/can-run?))
-    (log/warn "THIS APPLICATION CANNOT RUN ON THIS MACHINE. SO SAYETH ZOOKEEPER.")
-    (log/warn "THIS APPLICATION WILL NOT EXECUTE CORRECTLY."))
-  
-  (reset! props (cl/properties "osm")))
-
-(def max-retries
-     (Integer/parseInt (get @props "osm.app.max-retries")))
-
-(def retry-delay
-     (Integer/parseInt (get @props "osm.app.retry-delay")))
-
-(mongo/set-mongo-props @props)
+(defn max-retries [] (Integer/parseInt (get @props "osm.app.max-retries")))
+(defn retry-delay [] (Integer/parseInt (get @props "osm.app.retry-delay")))
+(defn listen-port [] (Integer/parseInt (get @props "osm.app.listen-port")))
 
 (defn format-exception
   "Formats a raised exception as a JSON object. Returns a response map."
@@ -68,8 +55,8 @@
   (log/debug "reconn")
   (loop [num-retries 0]
     (let [retval (apply do-apply (concat [func] args))]
-      (if (and (not (:succeeded retval)) (< num-retries max-retries))
-        (do (Thread/sleep retry-delay)
+      (if (and (not (:succeeded retval)) (< num-retries (max-retries)))
+        (do (Thread/sleep (retry-delay))
           (log/warn (str "Number of retries " num-retries))
           (recur (+ num-retries 1)))
         (if (:succeeded retval)
@@ -176,5 +163,18 @@
     wrap-keyword-params
     wrap-nested-params))
 
-(def app
-  (site-handler osm-routes))
+(defn -main
+  [& args]
+  (def zkprops (cc-props/parse-properties "osm.properties"))
+  (def zkurl (get zkprops "zookeeper"))
+  
+  (cl/with-zk
+    zkurl
+    (when (not (cl/can-run?))
+      (log/warn "THIS APPLICATION CANNOT RUN ON THIS MACHINE. SO SAYETH ZOOKEEPER.")
+      (log/warn "THIS APPLICATION WILL NOT EXECUTE CORRECTLY."))
+    
+    (reset! props (cl/properties "osm")))
+  
+  (mongo/set-mongo-props @props)
+  (jetty/run-jetty (site-handler osm-routes) {:port (listen-port)}))
