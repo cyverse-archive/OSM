@@ -16,7 +16,7 @@ Provides: osm
 Source0: %{name}-%{version}.tar.gz
 
 %description
-iPlant Email
+iPlant OSM
 
 %pre
 getent group iplant > /dev/null || groupadd -r iplant
