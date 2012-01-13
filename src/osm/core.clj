@@ -73,9 +73,9 @@
         (json/json-str (mongo/add-callbacks collection uuid body))))
 
 (defn controller-get-callbacks
-  [collection query filter]
+  [collection query]
   (resp 200
-        (json/json-str (first (mongo/query collection query filter)))))
+        (json/json-str {:callbacks (:callbacks (first (mongo/query collection query)))})))
 
 (defn controller-get-object
   [collection query]
@@ -115,10 +115,9 @@
   
   (GET "/:collection/:uuid/callbacks"
        [collection uuid :as {body :body}]
-       (let [query {:object_persistence_uuid uuid}
-             filter {:_id 0 :callbacks 1}]
+       (let [query {:object_persistence_uuid uuid}]
          (try
-           (reconn controller-get-callbacks collection query filter)
+           (reconn controller-get-callbacks collection query)
            (catch java.lang.Exception e
              (format-exception e)))))
   
@@ -145,7 +144,7 @@
   (POST "/:collection/:uuid"
         [collection uuid :as {body :body}]
         (try
-          (let [new-obj (cc-json/body->json body false)]
+          (let [new-obj (cc-json/body->json body true)]
             (reconn controller-post-object collection uuid new-obj))
           (catch java.lang.Exception e
             (format-exception e))))
@@ -176,5 +175,9 @@
     
     (reset! props (cl/properties "osm")))
   
+  (log/warn @props)
   (mongo/set-mongo-props @props)
+  (log/warn (str "Connecting to Mongo..."))
+  (mongo/connect)
+  (log/warn (str "Listening on " (listen-port)))
   (jetty/run-jetty (site-handler osm-routes) {:port (listen-port)}))

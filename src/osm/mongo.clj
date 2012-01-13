@@ -54,18 +54,21 @@
   (reset! host (get props "osm.mongodb.host"))
   (reset! port (Integer/parseInt (get props "osm.mongodb.port")))
   (reset! db-name (get props "osm.mongodb.database"))
-  (reset! auto-connect-retry (get props "osm.mongodb.auto-connect-retry"))
+  (reset! auto-connect-retry (boolean (Boolean. (get props "osm.mongodb.auto-connect-retry"))))
   (reset! connections-per-host (Integer/parseInt (get props "osm.mongodb.connections-per-host")))
   (reset! max-auto-connect-retry-time (Long/parseLong (get props "osm.mongodb.max-auto-connect-retry-time")))
   (reset! max-wait-time (Long/parseLong (get props "osm.mongodb.max-wait-time")))
   (reset! connect-timeout (Long/parseLong (get props "osm.app.callback-connect-timeout")))
-  (reset! read-timeout (Long/parseLong (get props "osm.app.callback-read-timeout"))))
+  (reset! read-timeout (Integer/parseInt (get props "osm.app.callback-read-timeout"))))
 
 (defn mongo-opts []
+  (log/warn (str "auto-connect-retry " @auto-connect-retry))
+  (log/warn (str "connections-per-host " @connections-per-host))
+  (log/warn (str "max-auto-connect-retry-time " @max-auto-connect-retry-time))
+  (log/warn (str "max-wait-time " @max-wait-time))
   (congo/mongo-options
     :auto-connect-retry @auto-connect-retry
     :connections-per-host @connections-per-host
-    :max-auto-connect-retry-time @max-auto-connect-retry-time
     :max-wait-time @max-wait-time))
 
 (defn connect
@@ -164,22 +167,21 @@
   (let [query        {:object_persistence_uuid uuid}
         update-state (dissoc (congo/fetch-one collection :where query) :_id)
         callbacks    (:callbacks (get-callbacks collection uuid))
-        changed      (not (= old-state new-state))]
-    (doall
-      (for [cb callbacks]
-        (let [cb-type (:type cb)]
-          (cond
-            (and changed (= cb-type "on_change"))
-            (future
-              (let [thread-cb cb
-                    thread-state update-state]
-                (fire-callback thread-cb thread-state)))
-            
-            (= cb-type "on_update")
-            (future
-              (let [thread-cb cb
-                    thread-state update-state]
-                (fire-callback thread-cb thread-state)))))))
+        changed      (not= old-state new-state)]
+    (doseq [cb callbacks]
+      (let [cb-type (:type cb)]
+        (cond
+          (and changed (= cb-type "on_change"))
+          (future
+            (let [thread-cb cb
+                  thread-state update-state]
+              (fire-callback thread-cb thread-state)))
+          
+          (= cb-type "on_update")
+          (future
+            (let [thread-cb cb
+                  thread-state update-state]
+              (fire-callback thread-cb thread-state))))))
     update-state))
 
 (defn- atomic-update
@@ -190,7 +192,7 @@
   (congo/with-mongo
     @conn
     (let [query    {:object_persistence_uuid uuid}
-          state    (get-state collection uuid)
+          state    (:state (get-state collection uuid))
           update   (merged-update state new-obj)]
       (congo/fetch-and-modify collection query update)
       (fire-all-callbacks collection uuid state new-obj))))
@@ -202,7 +204,7 @@
   (congo/with-mongo
     @conn
     (let [query    {:object_persistence_uuid uuid}
-          state    (get-state collection uuid)
+          state    (:state (get-state collection uuid))
           update   {"$set" {:state new-obj :history [state]}}]
       (congo/fetch-and-modify collection query update)
       (fire-all-callbacks collection uuid state new-obj))))
@@ -319,5 +321,11 @@
 (defn query
   "Entry point for querying for documents."
   ([collection query-obj]
-    (dissoc (congo/fetch collection :where query-obj :only (keys filter)) :_id)))
+    (congo/with-mongo
+      @conn
+      (into 
+        [] 
+        (map 
+          #(dissoc % :_id) 
+          (congo/fetch collection :where query-obj))))))
 
