@@ -44,6 +44,20 @@ install osm-1.0.0-SNAPSHOT-standalone.jar $RPM_BUILD_ROOT/usr/local/lib/osm/
 install conf/log4j.properties $RPM_BUILD_ROOT/etc/osm/
 install conf/osm.properties $RPM_BUILD_ROOT/etc/osm/
 
+%post
+/sbin/chkconfig --add osm
+
+%preun
+if [ $1 -eq 0 ] ; then
+	/sbin/service osm stop >/dev/null 2>&1
+	/sbin/chkconfig --del osm
+fi
+
+%postun
+if [ "$1" -ge "1" ] ; then
+	/sbin/service osm condrestart >/dev/null 2>&1 || :
+fi
+
 %clean
 lein clean
 rm -r lib/*
