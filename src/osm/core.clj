@@ -171,7 +171,8 @@
     zkurl
     (when (not (cl/can-run?))
       (log/warn "THIS APPLICATION CANNOT RUN ON THIS MACHINE. SO SAYETH ZOOKEEPER.")
-      (log/warn "THIS APPLICATION WILL NOT EXECUTE CORRECTLY."))
+      (log/warn "THIS APPLICATION WILL NOT EXECUTE CORRECTLY.")
+      (System/exit 1))
     
     (reset! props (cl/properties "osm")))
   
