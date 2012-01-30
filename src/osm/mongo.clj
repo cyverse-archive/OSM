@@ -71,15 +71,19 @@
     :connections-per-host @connections-per-host
     :max-wait-time @max-wait-time))
 
-(defn connect
-  "Returns a map containing a connection and db-reference."
-  []
-  (reset! conn (congo/make-connection @db-name :host @host :port @port (mongo-opts))))
+(def ^:dynamic mc nil)
+
+(defmacro with-osm
+  [& body]
+  `(let [mongoconn# (congo/make-connection @db-name :host @host :port @port (mongo-opts))]
+     (binding [mc mongoconn#]
+       (try (do (log/warn mc)
+              (congo/with-mongo mc ~@body))
+         (finally (congo/close-connection mc))))))
 
 (defn exists?
   ([collection uuid]
-    (congo/with-mongo 
-      @conn
+    (with-osm
       (let [num-docs (congo/fetch-count collection :where {:object_persistence_uuid uuid})]
         (> num-docs 0)))))
 
@@ -88,8 +92,7 @@
    map, while collection should be the name of the collection it
    should be inserted into."
   [collection new-obj]
-  (congo/with-mongo 
-    @conn
+  (with-osm
     (let [new-id   (UUID)
           new-map  {:callbacks               []
                     :history                 []
@@ -104,8 +107,7 @@
    object_persistence_uuid field, not the _id field created
    by MongoDB."
   [collection uuid]
-  (congo/with-mongo
-    @conn
+  (with-osm
     (let [query    {:object_persistence_uuid uuid}
           fields   {:state 1 :_id 0}
           obj      (dissoc (congo/fetch-one collection :where query :only [:state]) :_id)]
@@ -116,8 +118,7 @@
 (defn get-callbacks
   "Returns the callbacks for the document specified by uuid and collection."
   [collection uuid]
-  (congo/with-mongo
-    @conn
+  (with-osm
     (let [query    {:object_persistence_uuid uuid}
           fields   {:callbacks 1 :_id 0}
           obj      (dissoc (congo/fetch-one collection :where query :only [:callbacks]) :_id)]
@@ -189,8 +190,7 @@
    one of the keys from the update-ops vector in order for this
    to work correctly."
   [collection uuid new-obj]
-  (congo/with-mongo
-    @conn
+  (with-osm
     (let [query    {:object_persistence_uuid uuid}
           state    (:state (get-state collection uuid))
           update   (merged-update state new-obj)]
@@ -201,8 +201,7 @@
   "Performs a regular old update of an OSM document. Sets the
    state field of the document to new-obj."
   [collection uuid new-obj]
-  (congo/with-mongo
-    @conn
+  (with-osm
     (let [query    {:object_persistence_uuid uuid}
           state    (:state (get-state collection uuid))
           update   {"$set" {:state new-obj :history [state]}}]
@@ -267,8 +266,7 @@
     (not (valid-callbacks? callbacks)) (throw (java.lang.Exception. "Invalid Callbacks"))
     (not (exists? collection uuid))    (throw (java.lang.Exception. "Document doesn't exist."))
     :else
-    (congo/with-mongo
-      @conn
+    (with-osm
       (let [query         {:object_persistence_uuid uuid}
             cbs           (:callbacks (get-callbacks collection uuid))
             new-callbacks (concat cbs (callbacks "callbacks"))
@@ -309,8 +307,7 @@
     (not (valid-callbacks? callbacks)) (throw (java.lang.Exception. "Invalid Callbacks"))
     (not (exists? collection uuid))    (throw (java.lang.Exception. "Document doesn't exist."))
     :else
-    (congo/with-mongo
-      @conn
+    (with-osm
       (let [query          {:object_persistence_uuid uuid}
             curr-callbacks (:callbacks (get-callbacks collection uuid))
             new-callbacks  (filter-callbacks curr-callbacks (callbacks "callbacks"))
@@ -321,8 +318,7 @@
 (defn query
   "Entry point for querying for documents."
   ([collection query-obj]
-    (congo/with-mongo
-      @conn
+    (with-osm
       (into 
         [] 
         (map 
