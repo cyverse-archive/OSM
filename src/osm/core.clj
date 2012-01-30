@@ -167,6 +167,8 @@
   (def zkprops (cc-props/parse-properties "osm.properties"))
   (def zkurl (get zkprops "zookeeper"))
   
+  (log/warn "ZKURL: " zkurl)
+  
   (cl/with-zk
     zkurl
     (when (not (cl/can-run?))
@@ -178,7 +180,5 @@
   
   (log/warn @props)
   (mongo/set-mongo-props @props)
-  (log/warn (str "Connecting to Mongo..."))
-  (mongo/connect)
   (log/warn (str "Listening on " (listen-port)))
   (jetty/run-jetty (site-handler osm-routes) {:port (listen-port)}))
