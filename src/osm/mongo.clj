@@ -7,7 +7,8 @@
            [org.apache.http.client.methods HttpPost]
            [org.apache.http.impl.client BasicResponseHandler DefaultHttpClient]
            [org.apache.http.params HttpConnectionParams]
-           [org.apache.http.entity BasicHttpEntity]))
+           [org.apache.http.entity BasicHttpEntity])
+  (:use [slingshot.slingshot :only [try+ throw+]]))
 
 (def host (atom ""))
 (def port (atom 0))
@@ -84,8 +85,12 @@
 (defn exists?
   ([collection uuid]
     (with-osm
-      (let [num-docs (congo/fetch-count collection :where {:object_persistence_uuid uuid})]
-        (> num-docs 0)))))
+      (try+
+        (let [num-docs (congo/fetch-count collection :where {:object_persistence_uuid uuid})]
+          (> num-docs 0))
+        (catch java.lang.Exception e
+          (log/warn e)
+          false)))))
 
 (defn insert
   "Inserts new-obj into collection. new-obj should be a JSON-able
@@ -213,7 +218,7 @@
    or osm-update based on the return value of atomic-update?."
   [collection uuid new-obj]
   (cond
-    (not (exists? collection uuid)) (throw (java.lang.Exception. "Object doesn't exist."))
+    (not (exists? collection uuid)) (throw+ {:status ::error :return "Object doesn't exist."})
     (atomic-update? new-obj)        (atomic-update collection uuid new-obj)
     :else                           (osm-update collection uuid new-obj)))
 
@@ -263,8 +268,12 @@
   [collection uuid callbacks]
   (log/debug (json/json-str callbacks))
   (cond
-    (not (valid-callbacks? callbacks)) (throw (java.lang.Exception. "Invalid Callbacks"))
-    (not (exists? collection uuid))    (throw (java.lang.Exception. "Document doesn't exist."))
+    (not (valid-callbacks? callbacks)) 
+    (throw+ {:status ::error :return "Invalid Callbacks"})
+    
+    (not (exists? collection uuid))    
+    (throw+ {:status ::error :return "Document doesn't exist."})
+    
     :else
     (with-osm
       (let [query         {:object_persistence_uuid uuid}
@@ -304,8 +313,12 @@
    {\"callbacks\" [{\"callback\" \"some_url\" \"type\" \"on_update or on_change\"}]}"
   [collection uuid callbacks]
   (cond
-    (not (valid-callbacks? callbacks)) (throw (java.lang.Exception. "Invalid Callbacks"))
-    (not (exists? collection uuid))    (throw (java.lang.Exception. "Document doesn't exist."))
+    (not (valid-callbacks? callbacks)) 
+    (throw+ {:status ::error :return "Invalid Callbacks"})
+    
+    (not (exists? collection uuid))    
+    (throw+ {:status ::error :return "Document doesn't exist."})
+    
     :else
     (with-osm
       (let [query          {:object_persistence_uuid uuid}
@@ -324,4 +337,15 @@
         (map 
           #(dissoc % :_id) 
           (congo/fetch collection :where query-obj))))))
+
+(defn get-object
+  "Entry point for retrieving a document."
+  [collection uuid]
+  (let [obj-query {:object_persistence_uuid uuid}]
+    (cond
+      (not (exists? collection uuid)) 
+      (throw+ {:status ::error :return "URL does not exist."})
+      
+      :else
+      (first (query collection obj-query)))))
 

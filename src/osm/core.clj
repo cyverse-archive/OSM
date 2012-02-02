@@ -10,7 +10,8 @@
             [ring.adapter.jetty :as jetty]
             [clojure.data.json :as json]
             [clojure.tools.logging :as log])
-  (:use [ring.middleware keyword-params nested-params]))
+  (:use [ring.middleware keyword-params nested-params]
+        [slingshot.slingshot :only [throw+ try+]]))
 
 (defn resp
   [status msg]
@@ -65,33 +66,59 @@
 
 (defn controller-delete-callbacks
   [collection uuid body]
-  (resp 200 (json/json-str (mongo/remove-callbacks collection uuid body))))
+  (try+
+    (resp 200 (json/json-str (mongo/remove-callbacks collection uuid body)))
+    (catch [:status :osm.mongo/error] {:keys [return]}
+      (log/warn (str "remove-callbacks failed: " return))
+      (resp 500 return))))
 
 (defn controller-add-callbacks
   [collection uuid body]
-  (resp 200
-        (json/json-str (mongo/add-callbacks collection uuid body))))
+  (try+
+    (resp 200 (json/json-str (mongo/add-callbacks collection uuid body)))
+    (catch [:status :osm.mongo/error] {:keys [return]}
+      (log/warn (str "add-callbacks failed: " return))
+      (resp 500 return))))
 
 (defn controller-get-callbacks
   [collection query]
-  (resp 200
-        (json/json-str {:callbacks (:callbacks (first (mongo/query collection query)))})))
+  (try+
+    (resp 200 (json/json-str {:callbacks (:callbacks (first (mongo/query collection query)))}))
+    (catch [:status :osm.mongo/error] {:keys [return]}
+      (log/warn (str "get-callbacks failed: " return))
+      (resp 500 return))))
 
 (defn controller-get-object
-  [collection query]
-  (resp 200 (json/json-str (first (mongo/query collection query)))))
+  [collection uuid]
+  (try+
+    (resp 200 (json/json-str (mongo/get-object collection uuid)))  
+    (catch [:status :osm.mongo/error] {:keys [return]}
+      (log/warn (str "get-object failed: " return))
+      (resp 500 return))))
 
 (defn controller-post-object
   [collection uuid new-obj]
-  (resp 200 (json/json-str (mongo/update collection uuid new-obj))))
+  (try+
+    (resp 200 (json/json-str (mongo/update collection uuid new-obj)))
+    (catch [:status :osm.mongo/error] {:keys [return]}
+      (log/warn (str "update failed: " return))
+      (resp 500 return))))
 
 (defn controller-insert-object
   [collection new-obj]
-  (resp 200 (mongo/insert collection new-obj)))
+  (try+
+    (resp 200 (mongo/insert collection new-obj))
+    (catch [:status :osm.mongo/error] {:keys [return]}
+      (log/warn (str "insert failed: " return))
+      (resp 500 return))))
 
 (defn controller-query
   [collection query]
-  (resp 200 (json/json-str {:objects (mongo/query collection query)})))
+  (try+
+   (resp 200 (json/json-str {:objects (mongo/query collection query)}))
+   (catch [:status :osm.mongo/error] {:keys [return]}
+     (log/warn (str "query failed: " return))
+     (resp 500 return))))
 
 (defroutes osm-routes
   (GET "/" [] "Welcome to the OSM.")
@@ -136,8 +163,8 @@
   (GET "/:collection/:uuid"
        [collection uuid]
        (try
-         (let [query {:object_persistence_uuid uuid}]
-           (reconn controller-get-object collection query))
+         (log/debug "GET OBJECT: controller-get-object")
+         (reconn controller-get-object collection uuid)
          (catch java.lang.Exception e
            (format-exception e))))
   
