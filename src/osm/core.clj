@@ -191,7 +191,7 @@
 
 (defn -main
   [& args]
-  (def zkprops (cc-props/parse-properties "osm.properties"))
+  (def zkprops (cc-props/parse-properties "zkhosts.properties"))
   (def zkurl (get zkprops "zookeeper"))
   
   (log/warn "ZKURL: " zkurl)
