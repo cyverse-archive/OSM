@@ -6,13 +6,14 @@
 Summary: osm
 Name: osm
 Version: 0.1.0
-Release: 1
+Release: 3
 Epoch: 0
 BuildArchitectures: noarch
 Group: Applications
 BuildRoot: %{_tmppath}/%{name}-%{version}-buildroot
 License: BSD
 Provides: osm
+Requires: iplant-service-config
 Source0: %{name}-%{version}.tar.gz
 
 %description
@@ -42,7 +43,6 @@ install -d $RPM_BUILD_ROOT/etc/osm/
 install osm $RPM_BUILD_ROOT/etc/init.d/
 install osm-1.0.0-SNAPSHOT-standalone.jar $RPM_BUILD_ROOT/usr/local/lib/osm/
 install conf/log4j.properties $RPM_BUILD_ROOT/etc/osm/
-install conf/osm.properties $RPM_BUILD_ROOT/etc/osm/
 
 %post
 /sbin/chkconfig --add osm
@@ -61,6 +61,7 @@ fi
 %clean
 lein clean
 rm -r lib/*
+rm -r $RPM_BUILD_ROOT
 
 %files
 %attr(-,iplant,iplant) /usr/local/lib/osm/
@@ -70,7 +71,6 @@ rm -r lib/*
 %attr(-,iplant,iplant) /etc/osm/
 
 %config %attr(0644,iplant,iplant) /etc/osm/log4j.properties
-%config %attr(0644,iplant,iplant) /etc/osm/osm.properties
 
 %attr(0755,root,root) /etc/init.d/osm
 %attr(0644,iplant,iplant) /usr/local/lib/osm/osm-1.0.0-SNAPSHOT-standalone.jar

@@ -10,7 +10,8 @@
                  [org.iplantc/clojure-commons "1.1.0-SNAPSHOT"]
                  [org.apache.httpcomponents/httpcore "4.1.3"]
                  [org.apache.httpcomponents/httpclient "4.1.1"]
-                 [log4j/log4j "1.2.16"]]
+                 [log4j/log4j "1.2.16"]
+                 [slingshot "0.10.1"]]
   :aot [osm.core]
   :main osm.core
   :repositories {"iplantCollaborative"
