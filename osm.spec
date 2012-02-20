@@ -6,14 +6,14 @@
 Summary: osm
 Name: osm
 Version: 0.1.0
-Release: 3
+Release: 4
 Epoch: 0
 BuildArchitectures: noarch
 Group: Applications
 BuildRoot: %{_tmppath}/%{name}-%{version}-buildroot
 License: BSD
 Provides: osm
-Requires: iplant-service-config
+Requires: iplant-service-config >= 0.1.0-4
 Source0: %{name}-%{version}.tar.gz
 
 %description
