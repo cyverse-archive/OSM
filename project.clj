@@ -12,6 +12,11 @@
                  [org.apache.httpcomponents/httpclient "4.1.1"]
                  [log4j/log4j "1.2.16"]
                  [slingshot "0.10.1"]]
+  :plugins [[org.iplantc/lein-iplant-rpm "1.3.0-SNAPSHOT"]]
+  :iplant-rpm {:summary "osm"
+               :dependencies ["iplant-service-config >= 0.1.0-5"]
+               :config-files ["log4j.properties"]
+               :config-path "conf"}
   :aot [osm.core]
   :main osm.core
   :repositories {"iplantCollaborative"
