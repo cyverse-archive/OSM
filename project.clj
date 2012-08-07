@@ -1,6 +1,6 @@
 (defproject osm "1.0.0-SNAPSHOT"
   :description "The OSM v1.0.0"
-  :dependencies [[org.clojure/clojure "1.3.0"]
+  :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/data.json "0.1.1"]
                  [org.clojure/tools.logging "0.2.3"]
                  [congomongo "0.1.7"]
@@ -11,7 +11,8 @@
                  [org.apache.httpcomponents/httpcore "4.1.3"]
                  [org.apache.httpcomponents/httpclient "4.1.1"]
                  [log4j/log4j "1.2.16"]
-                 [slingshot "0.10.1"]]
+                 [slingshot "0.10.1"]
+                 [clj-http "0.4.3"]]
   :plugins [[org.iplantc/lein-iplant-rpm "1.3.0-SNAPSHOT"]]
   :iplant-rpm {:summary "osm"
                :dependencies ["iplant-service-config >= 0.1.0-5"]

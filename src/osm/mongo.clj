@@ -49,24 +49,61 @@
   (log/debug "UUID")
   (string/upper-case (str (java.util.UUID/randomUUID))))
 
+(defn prop-mongo-host 
+  [props]
+  (get props "osm.mongodb.host"))
+
+(defn prop-mongo-port
+  [props]
+  (Integer/parseInt (get props "osm.mongodb.port")))
+
+(defn prop-mongo-db
+  [props]
+  (get props "osm.mongodb.database"))
+
+(defn prop-connect-retry
+  [props]
+  (boolean (Boolean. (get props "osm.mongodb.auto-connect-retry"))))
+
+(defn prop-connections-per-host
+  [props]
+  (Integer/parseInt (get props "osm.mongodb.connections-per-host")))
+
+(defn prop-max-connection-retry-time
+  [props]
+  (Long/parseLong (get props "osm.mongodb.max-auto-connect-retry-time")))
+
+(defn prop-max-wait-time
+  [props]
+  (Long/parseLong (get props "osm.mongodb.max-wait-time")))
+
+(defn prop-connect-timeout
+  [props]
+  (Long/parseLong (get props "osm.app.callback-connect-timeout")))
+
+(defn prop-read-timeout
+  [props]
+  (Integer/parseInt (get props "osm.app.callback-read-timeout")))
+
 (defn set-mongo-props
   "Sets mongodb related atoms, which are used to create new connections."
   [props]
-  (reset! host (get props "osm.mongodb.host"))
-  (reset! port (Integer/parseInt (get props "osm.mongodb.port")))
-  (reset! db-name (get props "osm.mongodb.database"))
-  (reset! auto-connect-retry (boolean (Boolean. (get props "osm.mongodb.auto-connect-retry"))))
-  (reset! connections-per-host (Integer/parseInt (get props "osm.mongodb.connections-per-host")))
-  (reset! max-auto-connect-retry-time (Long/parseLong (get props "osm.mongodb.max-auto-connect-retry-time")))
-  (reset! max-wait-time (Long/parseLong (get props "osm.mongodb.max-wait-time")))
-  (reset! connect-timeout (Long/parseLong (get props "osm.app.callback-connect-timeout")))
-  (reset! read-timeout (Integer/parseInt (get props "osm.app.callback-read-timeout"))))
+  (reset! host (prop-mongo-host props))
+  (reset! port (prop-mongo-port props))
+  (reset! db-name (prop-mongo-db props))
+  (reset! auto-connect-retry  (prop-connect-retry props))
+  (reset! connections-per-host (prop-connections-per-host props))
+  (reset! max-auto-connect-retry-time (prop-max-connection-retry-time props))
+  (reset! max-wait-time (prop-max-wait-time props))
+  (reset! connect-timeout (prop-connect-timeout props))
+  (reset! read-timeout (prop-read-timeout props)))
 
 (defn mongo-opts []
   (log/warn (str "auto-connect-retry " @auto-connect-retry))
   (log/warn (str "connections-per-host " @connections-per-host))
   (log/warn (str "max-auto-connect-retry-time " @max-auto-connect-retry-time))
   (log/warn (str "max-wait-time " @max-wait-time))
+  
   (congo/mongo-options
     :auto-connect-retry @auto-connect-retry
     :connections-per-host @connections-per-host
@@ -78,8 +115,9 @@
   [& body]
   `(let [mongoconn# (congo/make-connection @db-name :host @host :port @port (mongo-opts))]
      (binding [mc mongoconn#]
-       (try (do (log/warn mc)
-              (congo/with-mongo mc ~@body))
+       (try 
+         (log/warn mc)
+         (congo/with-mongo mc ~@body)
          (finally (congo/close-connection mc))))))
 
 (defn exists?
@@ -87,7 +125,7 @@
     (with-osm
       (try+
         (let [num-docs (congo/fetch-count collection :where {:object_persistence_uuid uuid})]
-          (> num-docs 0))
+          (pos? num-docs))
         (catch java.lang.Exception e
           (log/warn e)
           false)))))
@@ -148,25 +186,30 @@
       (.setContentType "application/json")
       (.setContentLength (count entity-bytes)))))
 
+(defn execute-callback
+  [http-client http-post resp-handler cb-url]
+  (let [resp-body (.execute http-client http-post resp-handler)]
+    (log/info (str "Response from " cb-url " is: " resp-body))))
+
 (defn fire-callback
   [callback state]
   (log/debug "fire-callback")
-  (let [ct      @connect-timeout
-        rt      @read-timeout
-        cb-url  (:callback callback)
-        cb-body (json/json-str state)]
-    (log/info (str "Firing callback to " cb-url))
-    (log/debug (str "Callback body is " cb-body))
-    (let [http-client  (DefaultHttpClient.)
+  (future
+    (let [cb-url       (:callback callback)
+          cb-body      (json/json-str state)
+          http-client  (DefaultHttpClient.)
           resp-handler (BasicResponseHandler.)
           http-params  (.getParams http-client)
-          body-entity  (get-entity cb-body)
           http-post    (HttpPost. cb-url)]
-      (.setEntity http-post body-entity)
-      (HttpConnectionParams/setConnectionTimeout http-params ct)
-      (HttpConnectionParams/setSoTimeout http-params rt)
-      (let [resp-body (.execute http-client http-post resp-handler)]
-        (log/info (str "Response from " cb-url " is: " resp-body))))))
+      (log/info (str "Firing callback to " cb-url))
+      (log/debug (str "Callback body is " cb-body))
+      
+      (.setEntity http-post (get-entity cb-body))
+      
+      (HttpConnectionParams/setConnectionTimeout http-params @connect-timeout)
+      (HttpConnectionParams/setSoTimeout http-params @read-timeout)
+      
+      (execute-callback http-client http-post resp-handler cb-url))))
 
 (defn fire-all-callbacks
   [collection uuid old-state new-state]
@@ -178,13 +221,15 @@
       (let [cb-type (:type cb)]
         (cond
           (and changed (= cb-type "on_change"))
-          (future
+          (fire-callback cb update-state)
+          #_(future
             (let [thread-cb cb
                   thread-state update-state]
               (fire-callback thread-cb thread-state)))
           
           (= cb-type "on_update")
-          (future
+          (fire-callback cb update-state)
+          #_(future
             (let [thread-cb cb
                   thread-state update-state]
               (fire-callback thread-cb thread-state))))))
@@ -225,7 +270,7 @@
 (defn valid-type?
   "Tells whether cb-type is either on_update or on_change."
   [cb-type]
-  (some #{cb-type} ["on_update" "on_change"]))
+  (some (set cb-type) ["on_update" "on_change"]))
 
 (defn url?
   "Tells whether some-string contains a valid URL. Apparently the
@@ -248,19 +293,42 @@
    {\"callbacks\" [{\"callback\" \"some_url\" \"type\" \"on_update or on_change\"}]}"
   [callbacks]
   (cond
-    (not (contains? callbacks "callbacks"))     (logged-return "callbacks element not present" false)
-    (not (sequential? (callbacks "callbacks"))) (logged-return "callbacks element not sequential" false)
+    (not (contains? callbacks "callbacks"))     
+    (logged-return 
+      "callbacks element not present" 
+      false)
+    
+    (not (sequential? (callbacks "callbacks"))) 
+    (logged-return 
+      "callbacks element not sequential" 
+      false)
+    
     :else
     (reduce
-      (fn [f s] (or f s))
+      #(or %1 %2)
       (map
-        (fn [cb]
-          (cond
-            (not (contains? cb "callback")) (logged-return "URL not present in callback" false)
-            (not (url? (cb "callback")))    (logged-return (str "URL " (cb "callback") " not valid in callback") false)
-            (not (contains? cb "type"))     (logged-return "type missing from callback" false)
-            (not (valid-type? (cb "type"))) (logged-return (str "type " (cb "type") " not valid in callback") false)
-            :else true))
+        #(cond
+          (not (contains? %1 "callback")) 
+          (logged-return 
+            "URL not present in callback" 
+            false)
+          
+          (not (url? (get %1 "callback")))    
+          (logged-return 
+            (str "URL " (get %1 "callback") " not valid in callback") 
+            false)
+          
+          (not (contains? %1 "type"))     
+          (logged-return 
+            "type missing from callback" 
+            false)
+          
+          (not (valid-type? (get %1 "type"))) 
+          (logged-return 
+            (str "type " (get %1 "type") " not valid in callback") 
+            false)
+          
+          :else true)
         (callbacks "callbacks")))))
 
 (defn add-callbacks
@@ -286,14 +354,14 @@
 (defn dekeywordize
   "Converts the keys in a map from keywords to strings."
   [m]
-  (apply merge
-         (map (fn [[k v]] {(name k) (if (map? v) (dekeywordize v) v)}) m)))
+  (apply 
+    merge
+    (map (fn [[k v]] {(name k) (if (map? v) (dekeywordize v) v)}) m)))
 
 (defn should-remove-callback
   "Determines whether or not a callback is in the list of callbacks to be removed"
   [curr-callback rm-callbacks]
-  (let [cc (dekeywordize curr-callback)]
-    (some #{cc} rm-callbacks)))
+  (some (set (dekeywordize curr-callback)) rm-callbacks))
 
 (defn filter-callbacks
   "Used by remove-callbacks to remove callbacks from a list."
@@ -301,10 +369,9 @@
   (log/debug (str "curr-callbacks: " curr-callbacks))
   (log/debug (str "rm-callbacks: " rm-callbacks))
   (filter
-    (fn [cc]
-      (if (should-remove-callback cc rm-callbacks)
-        false
-        true))
+    #(if (should-remove-callback % rm-callbacks)
+       false
+       true)
     curr-callbacks))
 
 (defn remove-callbacks
@@ -332,11 +399,9 @@
   "Entry point for querying for documents."
   ([collection query-obj]
     (with-osm
-      (into 
-        [] 
-        (map 
-          #(dissoc % :_id) 
-          (congo/fetch collection :where query-obj))))))
+      (mapv 
+        #(dissoc % :_id) 
+        (congo/fetch collection :where query-obj)))))
 
 (defn get-object
   "Entry point for retrieving a document."
