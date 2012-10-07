@@ -120,6 +120,14 @@
      (log/warn (str "query failed: " return))
      (resp 500 return))))
 
+(defn controller-count
+  [collection query]
+  (try+
+   (resp 200 (json/json-str {:count (mongo/count-documents collection query)}))
+   (catch [:status :osm.mongo/error] {:keys [return]}
+     (log/warn (str "count failed: " return))
+     (resp 500 return))))
+
 (defroutes osm-routes
   (GET "/" [] "Welcome to the OSM.")
 
@@ -157,6 +165,18 @@
             (format-exception e))))
 
   (GET "/:collection/query"
+       [collection]
+       {:status 404 :body "Not Found"})
+
+  (POST "/:collection/count"
+        [collection :as {body :body}]
+        (try
+          (let [query (cc-json/body->json body false)]
+            (reconn controller-count collection query))
+          (catch java.lang.Exception e
+            (format-exception e))))
+
+  (GET "/:collection/count"
        [collection]
        {:status 404 :body "Not Found"})
 

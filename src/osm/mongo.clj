@@ -182,7 +182,7 @@
             (let [thread-cb cb
                   thread-state update-state]
               (fire-callback thread-cb thread-state)))
-          
+
           (= cb-type "on_update")
           (future
             (let [thread-cb cb
@@ -268,12 +268,12 @@
   [collection uuid callbacks]
   (log/debug (json/json-str callbacks))
   (cond
-    (not (valid-callbacks? callbacks)) 
+    (not (valid-callbacks? callbacks))
     (throw+ {:status ::error :return "Invalid Callbacks"})
-    
-    (not (exists? collection uuid))    
+
+    (not (exists? collection uuid))
     (throw+ {:status ::error :return "Document doesn't exist."})
-    
+
     :else
     (with-osm
       (let [query         {:object_persistence_uuid uuid}
@@ -313,12 +313,12 @@
    {\"callbacks\" [{\"callback\" \"some_url\" \"type\" \"on_update or on_change\"}]}"
   [collection uuid callbacks]
   (cond
-    (not (valid-callbacks? callbacks)) 
+    (not (valid-callbacks? callbacks))
     (throw+ {:status ::error :return "Invalid Callbacks"})
-    
-    (not (exists? collection uuid))    
+
+    (not (exists? collection uuid))
     (throw+ {:status ::error :return "Document doesn't exist."})
-    
+
     :else
     (with-osm
       (let [query          {:object_persistence_uuid uuid}
@@ -331,21 +331,24 @@
 (defn query
   "Entry point for querying for documents."
   ([collection query-obj]
-    (with-osm
-      (into 
-        [] 
-        (map 
-          #(dissoc % :_id) 
-          (congo/fetch collection :where query-obj))))))
+     (with-osm
+       (mapv #(dissoc % :_id)
+             (congo/fetch collection :where query-obj)))))
+
+(defn count-documents
+  "Entry point for counting documents."
+  [collection query-obj]
+  (with-osm
+    (count (congo/fetch collection :where query-obj))))
 
 (defn get-object
   "Entry point for retrieving a document."
   [collection uuid]
   (let [obj-query {:object_persistence_uuid uuid}]
     (cond
-      (not (exists? collection uuid)) 
+      (not (exists? collection uuid))
       (throw+ {:status ::error :return "URL does not exist."})
-      
+
       :else
       (first (query collection obj-query)))))
 
