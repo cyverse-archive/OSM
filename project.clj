@@ -1,6 +1,6 @@
-(defproject osm "1.0.0-SNAPSHOT"
-  :description "The OSM v1.0.0"
-  :dependencies [[org.clojure/clojure "1.3.0"]
+(defproject osm "1.1.0-SNAPSHOT"
+  :description "The OSM v1.1.0"
+  :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/data.json "0.1.1"]
                  [org.clojure/tools.logging "0.2.3"]
                  [congomongo "0.1.7"]

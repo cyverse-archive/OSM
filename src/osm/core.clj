@@ -91,7 +91,7 @@
 (defn controller-get-object
   [collection uuid]
   (try+
-    (resp 200 (json/json-str (mongo/get-object collection uuid)))  
+    (resp 200 (json/json-str (mongo/get-object collection uuid)))
     (catch [:status :osm.mongo/error] {:keys [return]}
       (log/warn (str "get-object failed: " return))
       (resp 500 return))))
@@ -120,9 +120,17 @@
      (log/warn (str "query failed: " return))
      (resp 500 return))))
 
+(defn controller-count
+  [collection query]
+  (try+
+   (resp 200 (json/json-str {:count (mongo/count-documents collection query)}))
+   (catch [:status :osm.mongo/error] {:keys [return]}
+     (log/warn (str "count failed: " return))
+     (resp 500 return))))
+
 (defroutes osm-routes
   (GET "/" [] "Welcome to the OSM.")
-  
+
   (POST "/:collection/:uuid/callbacks/delete"
         [collection uuid :as {body :body}]
         (let [query  {:object_persistence_uuid uuid}
@@ -132,14 +140,14 @@
             (reconn controller-delete-callbacks collection uuid body)
             (catch java.lang.Exception e
               (format-exception e)))))
-  
+
   (POST "/:collection/:uuid/callbacks"
         [collection uuid :as {body :body}]
         (try
           (reconn controller-add-callbacks collection uuid (cc-json/body->json body false))
           (catch java.lang.Exception e
             (format-exception e))))
-  
+
   (GET "/:collection/:uuid/callbacks"
        [collection uuid :as {body :body}]
        (let [query {:object_persistence_uuid uuid}]
@@ -147,7 +155,7 @@
            (reconn controller-get-callbacks collection query)
            (catch java.lang.Exception e
              (format-exception e)))))
-  
+
   (POST "/:collection/query"
         [collection :as {body :body}]
         (try
@@ -155,11 +163,23 @@
             (reconn controller-query collection query))
           (catch java.lang.Exception e
             (format-exception e))))
-  
+
   (GET "/:collection/query"
        [collection]
        {:status 404 :body "Not Found"})
-  
+
+  (POST "/:collection/count"
+        [collection :as {body :body}]
+        (try
+          (let [query (cc-json/body->json body false)]
+            (reconn controller-count collection query))
+          (catch java.lang.Exception e
+            (format-exception e))))
+
+  (GET "/:collection/count"
+       [collection]
+       {:status 404 :body "Not Found"})
+
   (GET "/:collection/:uuid"
        [collection uuid]
        (try
@@ -167,7 +187,7 @@
          (reconn controller-get-object collection uuid)
          (catch java.lang.Exception e
            (format-exception e))))
-  
+
   (POST "/:collection/:uuid"
         [collection uuid :as {body :body}]
         (try
@@ -175,7 +195,7 @@
             (reconn controller-post-object collection uuid new-obj))
           (catch java.lang.Exception e
             (format-exception e))))
-  
+
   (POST "/:collection"
         [collection :as {body :body}]
         (try
@@ -193,18 +213,18 @@
   [& args]
   (def zkprops (cc-props/parse-properties "zkhosts.properties"))
   (def zkurl (get zkprops "zookeeper"))
-  
+
   (log/warn "ZKURL: " zkurl)
-  
+
   (cl/with-zk
     zkurl
     (when (not (cl/can-run?))
       (log/warn "THIS APPLICATION CANNOT RUN ON THIS MACHINE. SO SAYETH ZOOKEEPER.")
       (log/warn "THIS APPLICATION WILL NOT EXECUTE CORRECTLY.")
       (System/exit 1))
-    
+
     (reset! props (cl/properties "osm")))
-  
+
   (log/warn @props)
   (mongo/set-mongo-props @props)
   (log/warn (str "Listening on " (listen-port)))
