@@ -1,7 +1,9 @@
 Object State Management
 =======================
 
-Provides HTTP JSON API on top of MongoDB. Allows a subset of MongoDB operations on a document and provides a callback mechanism that can be used to notify other services that a document has changed.
+Provides HTTP JSON API on top of MongoDB. Allows a subset of MongoDB operations
+on a document and provides a callback mechanism that can be used to notify other
+services that a document has changed.
 
 
 Building the OSM
@@ -15,7 +17,8 @@ You'll need leiningen installed. Then run the following commands:
 Installing the OSM
 ------------------
 
-Assuming that the OSM is running on the same host as MongoDB, this should be as simple as dropping the WAR file into your servlet container.
+Assuming that the OSM is running on the same host as MongoDB, this should be as
+simple as dropping the WAR file into your servlet container.
 
 
 Verifying the OSM is working
@@ -47,7 +50,8 @@ This will produce a UUID:
 
     32060E54-F92A-1358-33EC-8E6F22BBBACD
 
-This identifier will be used with subsequent updates.  The above value returned will varied since it's a generated identifier.
+This identifier will be used with subsequent updates.  The above value returned
+will varied since it's a generated identifier.
 
 We can grab that the freshly created document with a simple HTTP GET:
 
@@ -101,18 +105,33 @@ Grab the UUID and check it to see if your changes made it:
 
 The previous state is available in ``"history"``.
 
-When state changes, there are callbacks that will fire an HTTP PORT to the URL defined by the callback's ``callback`` value:
-check the callbacks:
+When state changes, there are callbacks that will fire an HTTP PORT to the URL
+defined by the callback's ``callback`` value: check the callbacks:
 
     curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[]}
 
-To test that callbacks are firing, you may wish to create a "[post-bin](http://www.postbin.org/)".  This is a service that will create a some bucket for the OSM to HTTP POST data into and allow you to view it.  Visit [PostBin](http://www.postbin.org/) to create your data bucket.  You can monitor changes with an Atom syndication feed, or by hitting the URL given when you create it.  It will allow you to inspect the content and the headers of the HTTP POSTs.  (github has a short [description](http://help.github.com/testing-webhooks/) of using PostBin)
+To test that callbacks are firing, you may wish to create a
+"[post-bin](http://www.postbin.org/)".  This is a service that will create a
+some bucket for the OSM to HTTP POST data into and allow you to view it.  Visit
+[PostBin](http://www.postbin.org/) to create your data bucket.  You can monitor
+changes with an Atom syndication feed, or by hitting the URL given when you
+create it.  It will allow you to inspect the content and the headers of the HTTP
+POSTs.  (github has a short
+[description](http://help.github.com/testing-webhooks/) of using PostBin)
 
-When a document is updated, so any update, the OSM will do an HTTP POST to a callback of ``"type"`` "on_update" to the URL defined in ``"callback"``.  This means that any modification to the document (even if the same state was posted) will cause a callback to be fired.  If you want more refinement, you'd use "on_change."  When a document has an actual state change, the OSM will do an HTTP POST to a callback of ``"type"`` "on_change" to the URL defined in ``"callback"``.
+When a document is updated, so any update, the OSM will do an HTTP POST to a
+callback of ``"type"`` "on_update" to the URL defined in ``"callback"``.  This
+means that any modification to the document (even if the same state was posted)
+will cause a callback to be fired.  If you want more refinement, you'd use
+"on_change."  When a document has an actual state change, the OSM will do an
+HTTP POST to a callback of ``"type"`` "on_change" to the URL defined in
+``"callback"``.
 
-For clarifications on the callback events, please refer to the OSM [documentation](https://pods.iplantcollaborative.org/wiki/display/coresw/Object+State+Management+System) for more detailed information.
+For clarifications on the callback events, please refer to the OSM
+[documentation](https://pods.iplantcollaborative.org/wiki/display/coresw/Object+State+Management+System)
+for more detailed information.
 
 
 Add callbacks:
@@ -122,15 +141,19 @@ Add callbacks:
 
     {"callbacks":[{"type":"on_change","callback":"http:\/\/www.postbin.org\/r51w6z"},{"type":"on_update","callback":"http:\/\/www.google.com"}]}
 
-The results returned will be a list of the current callbacks on the object.  If you want to verify that result then just do the following:
+The results returned will be a list of the current callbacks on the object.  If
+you want to verify that result then just do the following:
 
     curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD/callbacks
 
     {"callbacks":[{"type":"on_change","callback":"http://www.postbin.org/r51w6z"},{"type":"on_update","callback":"http://www.google.com/"}]}
 
-You can add callbacks for two "event" types (or callback event types): "on_update" and "on_change"
+You can add callbacks for two "event" types (or callback event types):
+"on_update" and "on_change"
 
-Please refer to the OSM [documentation](https://pods.iplantcollaborative.org/wiki/display/coresw/Object+State+Management+System) for more detailed information.
+Please refer to the OSM
+[documentation](https://pods.iplantcollaborative.org/wiki/display/coresw/Object+State+Management+System)
+for more detailed information.
 
 
 Deleting callbacks
@@ -140,7 +163,8 @@ Deleting callbacks
 
     {"callbacks":[{"type":"on_change","callback":"http:\/\/www.postbin.org\/r51w6z"}]
 
-The response to the delete command will be the remaining callbacks on the object.
+The response to the delete command will be the remaining callbacks on the
+object.
 
 Verify they have been deleted:
 
@@ -169,7 +193,8 @@ The input JSON is:
         "jerry": "wants"
     }
 
-(Note: You may wish to save this to a file and include it with curl via the response-file interface (putting the @ in front of the filename))
+(Note: You may wish to save this to a file and include it with curl via the
+response-file interface (putting the @ in front of the filename))
 
     curl --data '{"uuid": "multistep3-89fb-4d70-0650-0xC0FFEE", "name": "job1", "user": "ana", "workspace_id": "1", "dag_id": "323", "submission_date": "Sun Dec 19 2010 12:50:38 GMT-0700 (MST)", "status": "Submitted", "foo": "baz", "whatever": "theheck", "jerry": "wants"}' http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
 
