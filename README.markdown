@@ -379,3 +379,41 @@ curl -sd '
 
 This should help prove that Object State Management (OSM) is functioning as
 expected.
+
+Counting objects that match a query
+-----------------------------------
+
+If you want to perform a search in the OSM, but just obtain the number of
+documents in the OSM that match your query then you can use the `count`
+service.  The request body for this service is identical to that of the query
+service, but the response body contains only the message count.  Continuing with
+the example from the previous section, you can count the number of documents
+with the UUID mentioned above like this:
+
+```
+curl -sd '
+{
+    "state.uuid" : "multistep3-89fb-4d70-0650-0xC0FFEE"
+}
+' "http://127.0.0.1:3000/jobs/query" | python -mjson.tool
+{
+    "count": 1
+}
+```
+
+Similarly, you can query for all documents that are associated with the user,
+`ana`, by doing this:
+
+```
+curl -sd '
+{
+    "state.user" : "ana"
+}
+' "http://127.0.0.1:3000/jobs/query" | python -mjson.tool
+{
+    "count": 1
+}
+```
+
+For more information on the query format, please see the [mongoDB
+documentation](http://www.mongodb.org/display/DOCS/Querying).
