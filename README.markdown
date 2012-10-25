@@ -70,8 +70,7 @@ will varied since it's a generated identifier.
 We can grab that the freshly created document with a simple HTTP GET:
 
 ```
-curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD
-
+curl http://127.0.0.1:3000/jobs/32060E54-F92A-1358-33EC-8E6F22BBBACD | python -mjson.tool
 {
     "object_persistence_uuid": "32060E54-F92A-1358-33EC-8E6F22BBBACD",
     "state": {
@@ -342,7 +341,7 @@ curl -sd '
 {
     "state.uuid" : "multistep3-89fb-4d70-0650-0xC0FFEE"
 }
-' "http://127.0.0.1:3000/jobs/query"
+' "http://127.0.0.1:3000/jobs/query" | python -mjson.tool
 {
     "objects": [
         {
