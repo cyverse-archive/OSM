@@ -395,7 +395,7 @@ curl -sd '
 {
     "state.uuid" : "multistep3-89fb-4d70-0650-0xC0FFEE"
 }
-' "http://127.0.0.1:3000/jobs/query" | python -mjson.tool
+' "http://127.0.0.1:3000/jobs/count" | python -mjson.tool
 {
     "count": 1
 }
@@ -409,7 +409,7 @@ curl -sd '
 {
     "state.user" : "ana"
 }
-' "http://127.0.0.1:3000/jobs/query" | python -mjson.tool
+' "http://127.0.0.1:3000/jobs/count" | python -mjson.tool
 {
     "count": 1
 }
