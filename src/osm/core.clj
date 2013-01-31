@@ -8,7 +8,7 @@
             [clojure-commons.props :as cc-props]
             [clojure-commons.clavin-client :as cl]
             [ring.adapter.jetty :as jetty]
-            [clojure.data.json :as json]
+            [cheshire.core :as cheshire]
             [clojure.tools.logging :as log])
   (:use [ring.middleware keyword-params nested-params]
         [slingshot.slingshot :only [throw+ try+]]))
@@ -35,8 +35,8 @@
           stack-trace       (. string-writer toString)]
       (log/warn (str localized-message stack-trace))
       {:status 500
-       :body (json/json-str {:message     (. exception getLocalizedMessage)
-                             :stack-trace (. string-writer toString)})})))
+       :body (cheshire/encode {:message     (. exception getLocalizedMessage)
+                               :stack-trace (. string-writer toString)})})))
 
 (defn- do-apply
   [func & args]
@@ -67,7 +67,7 @@
 (defn controller-delete-callbacks
   [collection uuid body]
   (try+
-    (resp 200 (json/json-str (mongo/remove-callbacks collection uuid body)))
+    (resp 200 (cheshire/encode (mongo/remove-callbacks collection uuid body)))
     (catch [:status :osm.mongo/error] {:keys [return]}
       (log/warn (str "remove-callbacks failed: " return))
       (resp 500 return))))
@@ -75,7 +75,7 @@
 (defn controller-add-callbacks
   [collection uuid body]
   (try+
-    (resp 200 (json/json-str (mongo/add-callbacks collection uuid body)))
+    (resp 200 (cheshire/encode (mongo/add-callbacks collection uuid body)))
     (catch [:status :osm.mongo/error] {:keys [return]}
       (log/warn (str "add-callbacks failed: " return))
       (resp 500 return))))
@@ -83,7 +83,7 @@
 (defn controller-get-callbacks
   [collection query]
   (try+
-    (resp 200 (json/json-str {:callbacks (:callbacks (first (mongo/query collection query)))}))
+    (resp 200 (cheshire/encode {:callbacks (:callbacks (first (mongo/query collection query)))}))
     (catch [:status :osm.mongo/error] {:keys [return]}
       (log/warn (str "get-callbacks failed: " return))
       (resp 500 return))))
@@ -91,7 +91,7 @@
 (defn controller-get-object
   [collection uuid]
   (try+
-    (resp 200 (json/json-str (mongo/get-object collection uuid)))
+    (resp 200 (cheshire/encode (mongo/get-object collection uuid)))
     (catch [:status :osm.mongo/error] {:keys [return]}
       (log/warn (str "get-object failed: " return))
       (resp 500 return))))
@@ -99,7 +99,7 @@
 (defn controller-post-object
   [collection uuid new-obj]
   (try+
-    (resp 200 (json/json-str (mongo/update collection uuid new-obj)))
+    (resp 200 (cheshire/encode (mongo/update collection uuid new-obj)))
     (catch [:status :osm.mongo/error] {:keys [return]}
       (log/warn (str "update failed: " return))
       (resp 500 return))))
@@ -115,7 +115,7 @@
 (defn controller-query
   [collection query]
   (try+
-   (resp 200 (json/json-str {:objects (mongo/query collection query)}))
+   (resp 200 (cheshire/encode {:objects (mongo/query collection query)}))
    (catch [:status :osm.mongo/error] {:keys [return]}
      (log/warn (str "query failed: " return))
      (resp 500 return))))
@@ -123,7 +123,7 @@
 (defn controller-count
   [collection query]
   (try+
-   (resp 200 (json/json-str {:count (mongo/count-documents collection query)}))
+   (resp 200 (cheshire/encode {:count (mongo/count-documents collection query)}))
    (catch [:status :osm.mongo/error] {:keys [return]}
      (log/warn (str "count failed: " return))
      (resp 500 return))))

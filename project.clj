@@ -1,13 +1,13 @@
 (defproject osm "1.1.0-SNAPSHOT"
   :description "The OSM v1.1.0"
   :dependencies [[org.clojure/clojure "1.4.0"]
-                 [org.clojure/data.json "0.1.1"]
                  [org.clojure/tools.logging "0.2.3"]
+                 [cheshire "5.0.1"]
                  [congomongo "0.1.7"]
                  [compojure "1.0.1"]
                  [ring/ring-jetty-adapter "1.0.1"]
                  [swank-clojure "1.3.1"]
-                 [org.iplantc/clojure-commons "1.1.0-SNAPSHOT"]
+                 [org.iplantc/clojure-commons "1.4.0-SNAPSHOT"]
                  [org.apache.httpcomponents/httpcore "4.1.3"]
                  [org.apache.httpcomponents/httpclient "4.1.1"]
                  [log4j/log4j "1.2.16"]
