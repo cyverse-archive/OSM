@@ -10,8 +10,8 @@
                  [org.iplantc/clojure-commons "1.4.1-SNAPSHOT"]
                  [org.apache.httpcomponents/httpcore "4.2.3"]
                  [org.apache.httpcomponents/httpclient "4.2.3"]
-                 [log4j/log4j "1.2.16"]
-                 [slingshot "0.10.1"]]
+                 [log4j/log4j "1.2.17"]
+                 [slingshot "0.10.3"]]
   :plugins [[org.iplantc/lein-iplant-rpm "1.4.0-SNAPSHOT"]]
   :iplant-rpm {:summary "osm"
                :dependencies ["iplant-service-config >= 0.1.0-5"]
