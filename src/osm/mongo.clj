@@ -1,7 +1,7 @@
 (ns osm.mongo
-  (:require [clojure.string :as string]
+  (:require [cheshire.core :as cheshire]
+            [clojure.string :as string]
             [somnium.congomongo :as congo]
-            [clojure.data.json :as json]
             [clojure.tools.logging :as log])
   (:import [org.apache.http.client ResponseHandler HttpClient]
            [org.apache.http.client.methods HttpPost]
@@ -154,7 +154,7 @@
   (let [ct      @connect-timeout
         rt      @read-timeout
         cb-url  (:callback callback)
-        cb-body (json/json-str state)]
+        cb-body (cheshire/encode state)]
     (log/info (str "Firing callback to " cb-url))
     (log/debug (str "Callback body is " cb-body))
     (let [http-client  (DefaultHttpClient.)
@@ -266,7 +266,7 @@
 (defn add-callbacks
   "Adds callbacks to a docuement."
   [collection uuid callbacks]
-  (log/debug (json/json-str callbacks))
+  (log/debug (cheshire/encode callbacks))
   (cond
     (not (valid-callbacks? callbacks))
     (throw+ {:status ::error :return "Invalid Callbacks"})
@@ -351,4 +351,3 @@
 
       :else
       (first (query collection obj-query)))))
-
